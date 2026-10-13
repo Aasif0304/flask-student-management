@@ -7,11 +7,16 @@ def create_student(data):
 
     cursor.execute(
         """
-        INSERT INTO students (name, age, course)
-        VALUES (%s, %s, %s)
+        INSERT INTO students (name, age, course, email)
+        VALUES (%s, %s, %s, %s)
         RETURNING id
         """,
-        (data["name"], data["age"], data["course"])
+        (
+            data["name"],
+            data["age"],
+            data["course"],
+            data.get("email")
+        )
     )
 
     student_id = cursor.fetchone()[0]
@@ -32,6 +37,7 @@ def fetch_all_students():
             s.name,
             s.age,
             s.course,
+            s.email,
             f.total_fees,
             f.paid_fees,
             f.pending_fees
@@ -51,12 +57,15 @@ def fetch_all_students():
             "name": row[1],
             "age": row[2],
             "course": row[3],
-            "total_fees": float(row[4]) if row[4] is not None else 0,
-            "paid_fees": float(row[5]) if row[5] is not None else 0,
-            "pending_fees": float(row[6]) if row[6] is not None else 0
+            "email": row[4],
+            "total_fees": float(row[5]) if row[5] is not None else 0,
+            "paid_fees": float(row[6]) if row[6] is not None else 0,
+            "pending_fees": float(row[7]) if row[7] is not None else 0
         }
         for row in rows
     ]
+
+
 def fetch_student_by_id(student_id):
     connection = get_db_connection()
     cursor = connection.cursor()
@@ -68,6 +77,7 @@ def fetch_student_by_id(student_id):
             s.name,
             s.age,
             s.course,
+            s.email,
             f.total_fees,
             f.paid_fees,
             f.pending_fees
@@ -91,22 +101,40 @@ def fetch_student_by_id(student_id):
         "name": row[1],
         "age": row[2],
         "course": row[3],
-        "total_fees": float(row[4]) if row[4] is not None else 0,
-        "paid_fees": float(row[5]) if row[5] is not None else 0,
-        "pending_fees": float(row[6]) if row[6] is not None else 0
+        "email": row[4],
+        "total_fees": float(row[5]) if row[5] is not None else 0,
+        "paid_fees": float(row[6]) if row[6] is not None else 0,
+        "pending_fees": float(row[7]) if row[7] is not None else 0
     }
+
 
 def edit_student(student_id, data):
     connection = get_db_connection()
     cursor = connection.cursor()
 
+    email_provided = "email" in data
+
     cursor.execute(
         """
         UPDATE students
-        SET name = %s, age = %s, course = %s
+        SET
+            name = %s,
+            age = %s,
+            course = %s,
+            email = CASE
+                WHEN %s THEN %s
+                ELSE email
+            END
         WHERE id = %s
         """,
-        (data["name"], data["age"], data["course"], student_id)
+        (
+            data["name"],
+            data["age"],
+            data["course"],
+            email_provided,
+            data.get("email"),
+            student_id
+        )
     )
 
     updated = cursor.rowcount > 0
